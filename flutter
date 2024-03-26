@@ -1,0 +1,157 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:intl/intl.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Reminder App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: ReminderPage(),
+    );
+  }
+}
+
+class ReminderPage extends StatefulWidget {
+  @override
+  _ReminderPageState createState() => _ReminderPageState();
+}
+
+class _ReminderPageState extends State<ReminderPage> {
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+  List<String> dayNames = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+  ];
+  List<String> timeChoices = List.generate(24, (index) => '${index.toString().padLeft(2, '0')}:00');
+  List<String> activityChoices = [
+    'Wake up',
+    'Go to gym',
+    'Breakfast',
+    'Meetings',
+    'Lunch',
+    'Quick nap',
+    'Go to library',
+    'Dinner',
+    'Go to sleep'
+  ];
+  String selectedDay;
+  String selectedTime;
+  String selectedActivity;
+
+  @override
+  void initState() {
+    super.initState();
+    var initializationSettingsAndroid =
+        AndroidInitializationSettings('app_icon');
+    var initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+    flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  Future<void> scheduleReminder() async {
+    var now = DateTime.now();
+    var selectedDateTime = DateFormat('yyyy-MM-dd').parse(
+        '${now.year.toString().padLeft(4, '0')}-${(now.month + 1).toString().padLeft(2, '0')}-${(now.day).toString().padLeft(2, '0')}T$selectedTime:00');
+    var selectedDayIndex = dayNames.indexOf(selectedDay);
+    var currentDayIndex = now.weekday % 7;
+    var daysDifference =
+        selectedDayIndex - currentDayIndex < 0 ? selectedDayIndex - currentDayIndex + 7 : selectedDayIndex - currentDayIndex;
+    var scheduledDateTime = selectedDateTime.add(Duration(days: daysDifference));
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        '0', 'Reminder', 'Reminder notifications',
+        importance: Importance.max, priority: Priority.high, playSound: true);
+    var platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.schedule(
+        0,
+        'Reminder',
+        'Time for $selectedActivity',
+        scheduledDateTime,
+        platformChannelSpecifics,
+        androidAllowWhileIdle: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Reminder App'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            DropdownButton<String>(
+              value: selectedDay,
+              hint: Text('Select Day'),
+              onChanged: (String newValue) {
+                setState(() {
+                  selectedDay = newValue;
+                });
+              },
+              items: dayNames.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 20),
+            DropdownButton<String>(
+              value: selectedTime,
+              hint: Text('Select Time'),
+              onChanged: (String newValue) {
+                setState(() {
+                  selectedTime = newValue;
+                });
+              },
+              items: timeChoices.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 20),
+            DropdownButton<String>(
+              value: selectedActivity,
+              hint: Text('Select Activity'),
+              onChanged: (String newValue) {
+                setState(() {
+                  selectedActivity = newValue;
+                });
+              },
+              items: activityChoices.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                scheduleReminder();
+              },
+              child: Text('Schedule Reminder'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
